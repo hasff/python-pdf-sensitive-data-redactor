@@ -8,10 +8,9 @@ from google.genai import types
 from PIL import Image, ImageDraw, ImageFont
 from pathlib import Path
 from dotenv import load_dotenv
-
 import easyocr
-
 import fitz
+
 from collections import defaultdict
 
 from tools.draw_lines import draw_boxes, draw_boxes_in_doc
@@ -20,6 +19,7 @@ from tools.draw_lines import draw_boxes, draw_boxes_in_doc
 
 def simulate_gemini_response_text():
     json_str = '[["March 21, 2026", "Rome, Italy", "Alexandria, VA", "Elias Thorne", "Sarah Vance", "+1-202-555-0198", "Marcus \\"The Ghost\\" Reed", "m.reed.secure@protonmail.ch", "Count A. Valerius", "142 Via della Lungaretta, Rome, IT", "+39-06-555-4321", "MARCH 18-19, 2026", "BARNABY"], ["BARNABY", "88 Piazza Santa Maria", "Alexandria Preservation Facility", "7210 Oakhaven Lane, VA", "1502", "BARNABY", "+39-06-555-4321", "BARNABY", "Sarah Vance"]]'
+    json_str = '[[], ["BARNABY"]]'
     return json.loads(json_str)
 
 def simulate_gemini_response_images():
