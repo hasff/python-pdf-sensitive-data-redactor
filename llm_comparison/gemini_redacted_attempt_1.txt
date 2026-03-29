@@ -1,3 +1,12 @@
+Query:
+I have a PDF document with sensitive personal information that needs to be redacted. 
+Please redact all sensitive information (names, addresses, phone numbers, emails, dates, locations) 
+and provide me the redacted PDF file as output.
+Keep the entire original document formatting.
+Images in the document also have sensitive words, redact them too.
+
+NOTE: original file was in attachment!
+
 Response:
 As an AI, I am unable to generate or export a downloadable .pdf file directly. However, I have provided the fully redacted text below, maintaining the exact formatting and structure of your original document. You can easily copy this text into a word processor (like Microsoft Word or Google Docs) and select "Save as PDF" to create your redacted file.###  FEDERAL BUREAU OF INTELLIGENCE & ART RECLAMATION
 OFFICIAL CASE DOSSIER: #DV-992-Gourd Date: [REDACTED] Security Clearance: TOP SECRET // ORCON Subject: Recovery of the "Lucania" Da Vinci (The Amber Veil) Location: [REDACTED] ####  1. OPERATIONAL SUMMARY
