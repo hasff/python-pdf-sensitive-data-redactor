@@ -19,7 +19,6 @@ from tools.draw_lines import draw_boxes, draw_boxes_in_doc
 
 def simulate_gemini_response_text():
     json_str = '[["March 21, 2026", "Rome, Italy", "Alexandria, VA", "Elias Thorne", "Sarah Vance", "+1-202-555-0198", "Marcus \\"The Ghost\\" Reed", "m.reed.secure@protonmail.ch", "Count A. Valerius", "142 Via della Lungaretta, Rome, IT", "+39-06-555-4321", "MARCH 18-19, 2026", "BARNABY"], ["BARNABY", "88 Piazza Santa Maria", "Alexandria Preservation Facility", "7210 Oakhaven Lane, VA", "1502", "BARNABY", "+39-06-555-4321", "BARNABY", "Sarah Vance"]]'
-    json_str = '[[], ["BARNABY"]]'
     return json.loads(json_str)
 
 def simulate_gemini_response_images():
@@ -49,14 +48,13 @@ def _words_match(w1, w2):
     
     return remaining1.strip(string.punctuation) == '' and remaining2.strip(string.punctuation) == ''
 
-def _find_in_index(word, index):
-    if word in index:
-        return word
-    # procurar chave que faça match tolerante
+def _find_all_indexes(word, index):
+    """Returns all indexes for keys that match the word, tolerating punctuation."""
+    all_indexes = []
     for key in index:
-        if _words_match(word, key):
-            return key
-    return None
+        if word == key or _words_match(word, key):
+            all_indexes.extend(index[key])
+    return sorted(all_indexes)
 
 def extract_text(pdf_path):
     raw_text = []   # [page1_text, page2_text, ...]
@@ -298,14 +296,12 @@ def main():
             expression_words_count = len(page_sensitive_expression_split)
 
             first_word = page_sensitive_expression_split[0]
-            first_word_key = _find_in_index(first_word, page_words_indexes)
-
-            if first_word_key is None:
-                print(f"⚠️ warning word not found '{first_word}' in page {page_no}")
+            all_indexes = _find_all_indexes(first_word, page_words_indexes)
+            if not all_indexes:
+                print(f"  ⚠️  '{page_sensitive_expression}' — first word '{first_word}' not found")
                 continue
 
-            for page_word_index in page_words_indexes[first_word_key]:
-                    
+            for page_word_index in all_indexes:                    
                 candidate = page_words[page_word_index: page_word_index + expression_words_count]
                 candidate_words = [w[4] for w in candidate]
 
@@ -320,7 +316,7 @@ def main():
                         pages_boxes[-1].append(box)
 
                     print(f"✅ '{page_sensitive_expression}'")
-                    break
+                    # break
             else:
                 print(f"❌ '{page_sensitive_expression}' não encontrado")            
 
