@@ -47,15 +47,14 @@ def _simulate_images_response():
 #       DATA EXTRACTION 📄
 # ♦───────────────────────────────────────────────────────────────
 def extract_text(pdf_path):
-    raw_text = []   # [page1_text, page2_text, ...]
+    
     pages_words = []  # [[(x0, y0, x1, y1, word1, pno, lno, bno)], ...]
     pages_words_indexes = [] 
     
     doc = fitz.open(pdf_path)
-    
-    for page_num, page in enumerate(doc):
-        raw_text.append(page.get_text())
+    formatted_text = ""
 
+    for page_num, page in enumerate(doc):
         page_words = page.get_text("words")
         pages_words.append(page_words)
 
@@ -66,9 +65,12 @@ def extract_text(pdf_path):
             if text not in pages_words_indexes[-1]:
                 pages_words_indexes[-1][text] = []
             pages_words_indexes[-1][text].append(idx)
+
+        page_text = " ".join(w[4] for w in page_words)
+        formatted_text += f"\n--- PAGE {page_num + 1} ---\n{page_text}"
     
     doc.close()
-    return raw_text, pages_words, pages_words_indexes
+    return formatted_text, pages_words, pages_words_indexes
 
 def extract_images(pdf_path):
     doc = fitz.open(pdf_path)
@@ -290,17 +292,20 @@ def main():
         print(f"Error: File {filePath} not found.")
         return
 
-    raw_text, pages_words, pages_words_indexes = extract_text(filePath)
+    # DATA EXTRACTION 📄
+    formatted_text, pages_words, pages_words_indexes = extract_text(filePath)
+    images = extract_images(filePath)
 
+    # AI DETECTION 🔎
     if DEBUG:
         pages_sensitive_expressions = _simulate_text_response() # Mock data for development
-    else:
-        formatted_text = ""
-        for i, text in enumerate(raw_text):
-            formatted_text += f"\n--- PAGE {i+1} ---\n{text}"        
+        imgs_words = _simulate_images_response()
+    else:       
         pages_sensitive_expressions = detect_sensitive_words_in_text(formatted_text) # Live API call
+        imgs_words = detect_sensitive_words_in_images(images)
 
-    # detect words in document.
+
+    # Build page boxes for redaction based on detected sensitive expressions
     pages_boxes = []
     
     for page_no, page_sensitive_expressions in enumerate(pages_sensitive_expressions): 
@@ -340,21 +345,28 @@ def main():
                 print(f"❌ '{page_sensitive_expression}' não encontrado")            
 
 
-    draw_boxes(filePath, OUTPUT_DIR / "false_redact.pdf", pages_boxes, color= (0,0,0), fill= (0,0,0))
+    # REDACTION 📝
+    # ── Step 1: False redact (visual only — text still extractable)
+    _source_file = filePath
+    _result_file = OUTPUT_DIR / "1_false_redact.pdf"    
+    draw_boxes(_source_file, _result_file, pages_boxes, color= (0,0,0), fill= (0,0,0))
 
-    redacted_file_path = OUTPUT_DIR / "redacted.pdf"
-    redact_text(filePath, redacted_file_path, pages_boxes)
+
+    # ── Step 2: True text redact
+    _source_file = filePath
+    _result_file = OUTPUT_DIR / "2_redacted_text.pdf"
+    redact_text(_source_file, _result_file, pages_boxes)
 
 
-    # images = extract_images(filePath)
-    # if DEBUG:
-    #     imgs_words = simulate_gemini_response_images()
-    # else:
-    #     imgs_words = detect_sensitive_words_in_images(images)    
-
-    # redacted_file_path2 = OUTPUT_DIR / "redacted2.pdf"
-    # # redact_images(filePath, redacted_file_path2, images, imgs_words)
-    # redact_images(redacted_file_path, redacted_file_path2, images, imgs_words)
+    # ── Step 3: Image redact
+    _source_file = _result_file
+    _result_file = OUTPUT_DIR / "3_redacted_images.pdf"   
+    redact_images(_source_file, _result_file, images, imgs_words)
+    
+    # ── Step 4: Metadata redact
+    _source_file = _result_file
+    _result_file = OUTPUT_DIR / "4_redacted_metadata.pdf"    
+    redact_metadata(_source_file, _result_file)
 
 
 
