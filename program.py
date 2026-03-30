@@ -5,28 +5,18 @@ import string
 
 from google import genai
 from google.genai import types
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 from pathlib import Path
 from dotenv import load_dotenv
 import easyocr
 import fitz
-
 from collections import defaultdict
 
 from tools.draw_lines import draw_boxes, draw_boxes_in_doc
 
-
-
-def simulate_gemini_response_text():
-    json_str = '[["March 21, 2026", "Rome, Italy", "Alexandria, VA", "Elias Thorne", "Sarah Vance", "+1-202-555-0198", "Marcus \\"The Ghost\\" Reed", "m.reed.secure@protonmail.ch", "Count A. Valerius", "142 Via della Lungaretta, Rome, IT", "+39-06-555-4321", "MARCH 18-19, 2026", "BARNABY"], ["BARNABY", "88 Piazza Santa Maria", "Alexandria Preservation Facility", "7210 Oakhaven Lane, VA", "1502", "BARNABY", "+39-06-555-4321", "BARNABY", "Sarah Vance"]]'
-    return json.loads(json_str)
-
-def simulate_gemini_response_images():
-    json_str = '{"113": [["Sarah Vance", true]], "115": [["Phase IV", false], ["Exfiltration", false], ["03:05 AM", false], ["Agent Thorne", false], ["BARNABY", false], ["Marcus Reed", false]]}'
-    data = json.loads(json_str)
-    data = {int(k): v for k, v in data.items()}
-    return data
-
+# ♦───────────────────────────────────────────────────────────────
+#       CONFIGURATION
+# ♦───────────────────────────────────────────────────────────────
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 MODEL = "gemini-2.5-flash"
@@ -38,24 +28,24 @@ OUTPUT_DIR = BASE_DIR / "output"
 
 DEBUG = True  # Set to False to run the full pipeline with a real image and API call
 
-def _words_match(w1, w2):
-    remaining1 = w1
-    remaining2 = w2
-    for char in w2:
-        remaining1 = remaining1.replace(char, '', 1)
-    for char in w1:
-        remaining2 = remaining2.replace(char, '', 1)
-    
-    return remaining1.strip(string.punctuation) == '' and remaining2.strip(string.punctuation) == ''
 
-def _find_all_indexes(word, index):
-    """Returns all indexes for keys that match the word, tolerating punctuation."""
-    all_indexes = []
-    for key in index:
-        if word == key or _words_match(word, key):
-            all_indexes.extend(index[key])
-    return sorted(all_indexes)
+# ♦───────────────────────────────────────────────────────────────
+#       DEBUG MOCKS 🪲
+# ♦───────────────────────────────────────────────────────────────
+def _simulate_text_response():
+    json_str = '[["March 21, 2026", "Rome, Italy", "Alexandria, VA", "Elias Thorne", "Sarah Vance", "+1-202-555-0198", "Marcus \\"The Ghost\\" Reed", "m.reed.secure@protonmail.ch", "Count A. Valerius", "142 Via della Lungaretta, Rome, IT", "+39-06-555-4321", "MARCH 18-19, 2026", "BARNABY"], ["BARNABY", "88 Piazza Santa Maria", "Alexandria Preservation Facility", "7210 Oakhaven Lane, VA", "1502", "BARNABY", "+39-06-555-4321", "BARNABY", "Sarah Vance"]]'
+    return json.loads(json_str)
 
+def _simulate_images_response():
+    json_str = '{"113": [["Sarah Vance", true]], "115": [["Phase IV", false], ["Exfiltration", false], ["03:05 AM", false], ["Agent Thorne", false], ["BARNABY", false], ["Marcus Reed", false]]}'
+    data = json.loads(json_str)
+    data = {int(k): v for k, v in data.items()}
+    return data
+
+
+# ♦───────────────────────────────────────────────────────────────
+#       DATA EXTRACTION 📄
+# ♦───────────────────────────────────────────────────────────────
 def extract_text(pdf_path):
     raw_text = []   # [page1_text, page2_text, ...]
     pages_words = []  # [[(x0, y0, x1, y1, word1, pno, lno, bno)], ...]
@@ -80,6 +70,32 @@ def extract_text(pdf_path):
     doc.close()
     return raw_text, pages_words, pages_words_indexes
 
+def extract_images(pdf_path):
+    doc = fitz.open(pdf_path)
+    doc_images = []
+
+    for xref in range(1, doc.xref_length()):
+        if doc.xref_is_image(xref):
+            base_image = doc.extract_image(xref)
+            for page in doc:
+                rects = page.get_image_rects(xref)
+                for rect in rects:
+                    doc_images.append({
+                        "xref": xref,
+                        "bytes": base_image["image"],
+                        "bbox": rect,
+                        "ext": base_image["ext"],
+                        "width": base_image["width"],
+                        "height": base_image["height"]
+                    })
+
+    doc.close()
+    return doc_images
+
+
+# ♦───────────────────────────────────────────────────────────────
+#       AI DETECTION 🔎
+# ♦───────────────────────────────────────────────────────────────
 def detect_sensitive_words_in_text(text):
     client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1'})
     
@@ -105,49 +121,6 @@ def detect_sensitive_words_in_text(text):
         return json.loads(response.text)
     except Exception as e:
         return f"Error: {e}"
-
-def redact_text(pdf_path, output_path, pages_boxes):
-    doc = fitz.open(pdf_path)
-    
-    for page_num, boxes in enumerate(pages_boxes):
-        page = doc[page_num]
-        
-        for box in boxes:
-            x0, y0, x1, y1 = box
-            rect = fitz.Rect(x0, y0, x1, y1)
-
-            page.add_redact_annot(rect, text="___", fontsize=8)
-        
-        page.apply_redactions()
-    
-    draw_boxes_in_doc(doc, pages_boxes, color= (0,0,0), fill= (0,0,0))
-
-
-    doc.save(output_path)
-    doc.close()
-    
-
-def extract_images(pdf_path):
-    doc = fitz.open(pdf_path)
-    doc_images = []
-
-    for xref in range(1, doc.xref_length()):
-        if doc.xref_is_image(xref):
-            base_image = doc.extract_image(xref)
-            for page in doc:
-                rects = page.get_image_rects(xref)
-                for rect in rects:
-                    doc_images.append({
-                        "xref": xref,
-                        "bytes": base_image["image"],
-                        "bbox": rect,
-                        "ext": base_image["ext"],
-                        "width": base_image["width"],
-                        "height": base_image["height"]
-                    })
-
-    doc.close()
-    return doc_images
 
 def detect_sensitive_words_in_images(images):
     client = genai.Client(api_key=API_KEY, http_options={'api_version': 'v1'})
@@ -184,6 +157,50 @@ def detect_sensitive_words_in_images(images):
     _json = json.dumps(images_boxes)
     return images_boxes
 
+
+# ♦───────────────────────────────────────────────────────────────
+#       REDACTION 📝
+# ♦───────────────────────────────────────────────────────────────
+
+def _words_match(w1, w2):
+    remaining1 = w1
+    remaining2 = w2
+    for char in w2:
+        remaining1 = remaining1.replace(char, '', 1)
+    for char in w1:
+        remaining2 = remaining2.replace(char, '', 1)
+    
+    return remaining1.strip(string.punctuation) == '' and remaining2.strip(string.punctuation) == ''
+
+def _find_all_indexes(word, index):
+    """Returns all indexes for keys that match the word, tolerating punctuation."""
+    all_indexes = []
+    for key in index:
+        if word == key or _words_match(word, key):
+            all_indexes.extend(index[key])
+    return sorted(all_indexes)
+
+
+def redact_text(pdf_path, output_path, pages_boxes):
+    doc = fitz.open(pdf_path)
+    
+    for page_num, boxes in enumerate(pages_boxes):
+        page = doc[page_num]
+        
+        for box in boxes:
+            x0, y0, x1, y1 = box
+            rect = fitz.Rect(x0, y0, x1, y1)
+
+            page.add_redact_annot(rect, text="___", fontsize=8)
+        
+        page.apply_redactions()
+    
+    draw_boxes_in_doc(doc, pages_boxes, color= (0,0,0), fill= (0,0,0))
+
+
+    doc.save(output_path)
+    doc.close()
+    
 def redact_images(pdf_path, output_path, images, imgs_words):
     
     ocr_reader = easyocr.Reader(['en'])
@@ -247,7 +264,6 @@ def redact_images(pdf_path, output_path, images, imgs_words):
         doc.save(output_path)
     doc.close()       
 
-
 def redact_metadata(pdf_path, output_path):
     doc = fitz.open(pdf_path)
     doc.set_metadata({
@@ -264,6 +280,9 @@ def redact_metadata(pdf_path, output_path):
     doc.close()
 
 
+# ♦───────────────────────────────────────────────────────────────
+#       MAIN FUNCTION 🚀
+# ♦───────────────────────────────────────────────────────────────
 def main():
     filePath = INPUT_DIR / "OPERATION_VERMILION_WHISKER.pdf"
     print(fitz.__version__)
@@ -274,7 +293,7 @@ def main():
     raw_text, pages_words, pages_words_indexes = extract_text(filePath)
 
     if DEBUG:
-        pages_sensitive_expressions = simulate_gemini_response_text() # Mock data for development
+        pages_sensitive_expressions = _simulate_text_response() # Mock data for development
     else:
         formatted_text = ""
         for i, text in enumerate(raw_text):
@@ -337,7 +356,6 @@ def main():
     # # redact_images(filePath, redacted_file_path2, images, imgs_words)
     # redact_images(redacted_file_path, redacted_file_path2, images, imgs_words)
 
-    a = 10
 
 
 if __name__ == "__main__":
