@@ -14,6 +14,14 @@ from collections import defaultdict
 
 from tools.draw_lines import draw_boxes, draw_boxes_in_doc
 
+
+# Do not display warning about pin memory (torch) and CUDA (easyocr)
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="torch")
+import logging
+logging.getLogger("easyocr").setLevel(logging.ERROR)
+
+
 # ♦───────────────────────────────────────────────────────────────
 #       CONFIGURATION
 # ♦───────────────────────────────────────────────────────────────
@@ -161,10 +169,10 @@ def detect_sensitive_words_in_images(images):
 
 
 # ♦───────────────────────────────────────────────────────────────
-#       REDACTION 📝
+#       HELPER FUNCTIONS 🛟
 # ♦───────────────────────────────────────────────────────────────
-
 def _words_match(w1, w2):
+    """Returns True if two words differ only in punctuation."""
     remaining1 = w1
     remaining2 = w2
     for char in w2:
@@ -182,89 +190,194 @@ def _find_all_indexes(word, index):
             all_indexes.extend(index[key])
     return sorted(all_indexes)
 
+# ♦───────────────────────────────────────────────────────────────
+#       Bounding Boxes (BBOXES) FOR REDACTION 📦
+# ♦───────────────────────────────────────────────────────────────
+def map_sensitive_text_data_to_bboxes(sensitive_text_data, pages_words, pages_words_indexes):
+    """
+    Matches sensitive expressions to word bounding boxes in the PDF.
+ 
+    sensitive_text_data - found sensitive expressions per page from the AI detection step
+    pages_words - list of lists of words with their bounding boxes and positions, one list per page
+    pages_words_indexes - list of dictionaries mapping words to their indexes in pages_words, one dictionary per page
 
-def redact_text(pdf_path, output_path, pages_boxes):
+    Exemple:
+        sensitive_text_data = [
+            ["John Smith", "March 21, 2026"], # page 1
+            ["42 North Street"]               # page 2
+        ]
+        pages_words = [
+            [(x0, y0, x1, y1, "John", block_no, line_no), (x0, y0, x1, y1, "Smith", block_no, line_no), (x0, y0, x1, y1, "John", block_no, line_no)],  # page 1
+        ]
+        pages_words_indexes = [
+            {"John": [0, 2], "Smith": [1], ...},  # page 1, "John" appears in pages_words[0] and pages_words[2], "Smith" appears in pages_words[1]
+        ]
+
+    Returns:
+        pages_boxes: list of lists of (x0, y0, x1, y1) tuples, one list per page
+    """
+    pages_bboxes = []
+ 
+    print("\n📍 Mapping sensitive expressions to bounding boxes (text):")
+    for page_no, page_sensitive_expressions in enumerate(sensitive_text_data): 
+        print(f"──────────── Page {page_no + 1} ────────────")
+        pages_bboxes.append([])
+
+        page_words = pages_words[page_no]
+        page_words_indexes = pages_words_indexes[page_no]
+
+        for page_sensitive_expression in page_sensitive_expressions:
+            page_sensitive_expression_split = page_sensitive_expression.split()
+            expression_words_count = len(page_sensitive_expression_split)
+
+            first_word = page_sensitive_expression_split[0]
+            all_indexes = _find_all_indexes(first_word, page_words_indexes)
+            if not all_indexes:
+                print(f"  ⚠️  '{page_sensitive_expression}' — first word '{first_word}' not found")
+                continue
+            
+            matched = False
+            for page_word_index in all_indexes:                    
+                candidate = page_words[page_word_index: page_word_index + expression_words_count]
+                candidate_words = [w[4] for w in candidate]
+
+                if all(_words_match(c, s) for c, s in zip(candidate_words, page_sensitive_expression_split)):
+                    lines = defaultdict(list)
+                    for word in candidate:
+                        line_key = (word[5], word[6])  # block_no, line_no
+                        lines[line_key].append(word)
+
+                    for line_words in lines.values():
+                        bbox = (line_words[0][0], line_words[0][1], line_words[-1][2], line_words[-1][3])
+                        pages_bboxes[-1].append(bbox)
+
+                    matched = True
+
+            if not matched:
+                print(f"  ❌  '{page_sensitive_expression}' not found")
+            else:
+                print(f"✅ '{page_sensitive_expression}' found")
+ 
+    return pages_bboxes
+
+def map_sensitive_image_data_to_bboxes(sensitive_image_data, images):
+    """
+    Maps sensitive words detected in images to bounding boxes.
+
+    Returns:
+        dict[xref] = List[Tuple[x0, y0, x1, y1]]
+    """
+    ocr_reader = easyocr.Reader(['en'])
+    image_bboxes = {}
+
+    print("\n📍 Mapping sensitive expressions to bounding boxes (images):")
+
+    for image in images:
+        img_xref = image['xref']
+
+        if img_xref not in sensitive_image_data:
+            continue
+
+        words = sensitive_image_data[img_xref]
+        if not words:
+            continue
+
+        ocr_results = ocr_reader.readtext(image["bytes"])
+        pil_image = Image.open(io.BytesIO(image["bytes"]))
+
+        boxes = []
+
+        for sensitive_word, is_handwritten in words:
+            if is_handwritten:
+                print(f"⚠️  WARNING: '{sensitive_word}' is handwritten")
+
+                padding = 25
+                x0 = y0 = padding
+                x1, y1 = (w - padding for w in pil_image.size)
+
+                boxes.append((x0, y0, x1, y1))
+                break # since the whole image will be redacted, we can skip to the next one
+
+            word_detected = False
+            _sword = sensitive_word.lower()
+
+            for (bbox, text, confidence) in ocr_results:
+                _text = text.lower()
+
+                if _sword in _text:
+                    x0 = min(p[0] for p in bbox)
+                    y0 = min(p[1] for p in bbox)
+                    x1 = max(p[0] for p in bbox)
+                    y1 = max(p[1] for p in bbox)
+
+                    line_width = x1 - x0
+                    char_width = line_width / len(_text)
+                    idx = _text.find(_sword)
+
+                    word_x0 = x0 + idx * char_width
+                    word_x1 = word_x0 + len(_sword) * char_width
+
+                    compensation = 40
+
+                    boxes.append((
+                        word_x0 - compensation,
+                        y0,
+                        word_x1 + compensation,
+                        y1
+                    ))
+
+                    word_detected = True
+                    break
+
+            print(f"{'✅' if word_detected else '❌'} {sensitive_word}")
+
+        if boxes:
+            image_bboxes[img_xref] = boxes
+
+    return image_bboxes
+
+# ♦───────────────────────────────────────────────────────────────
+#       REDACTION 📝
+# ♦───────────────────────────────────────────────────────────────
+def redact_text(pdf_path, output_path, pages_bboxes):
     doc = fitz.open(pdf_path)
     
-    for page_num, boxes in enumerate(pages_boxes):
+    for page_num, bboxes in enumerate(pages_bboxes):
         page = doc[page_num]
         
-        for box in boxes:
-            x0, y0, x1, y1 = box
+        for bbox in bboxes:
+            x0, y0, x1, y1 = bbox
             rect = fitz.Rect(x0, y0, x1, y1)
 
             page.add_redact_annot(rect, text="___", fontsize=8)
         
         page.apply_redactions()
     
-    draw_boxes_in_doc(doc, pages_boxes, color= (0,0,0), fill= (0,0,0))
-
+    draw_boxes_in_doc(doc, pages_bboxes, color= (0,0,0), fill= (0,0,0))
 
     doc.save(output_path)
     doc.close()
     
-def redact_images(pdf_path, output_path, images, imgs_words):
-    
-    ocr_reader = easyocr.Reader(['en'])
-
+def redact_images(pdf_path, output_path, images, images_bboxes):
     doc = fitz.open(pdf_path)
-    img_changed = False
 
-    for image in images:
-        img_xref = image['xref']
-        if img_xref not in imgs_words:
+    for image in images: 
+
+        xref = image["xref"]
+        if xref not in images_bboxes:
             continue
-            
-        words = imgs_words[img_xref]
-        if not words:
-            continue
-  
-        ocr_results = ocr_reader.readtext(image["bytes"])
 
         pil_image = Image.open(io.BytesIO(image["bytes"]))
-        draw = ImageDraw.Draw(pil_image)
+        draw = ImageDraw.Draw(pil_image)       
+
+        for bbox in images_bboxes[xref]:
+            draw.rectangle(bbox, fill="black") 
         
-        for sensitive_word, is_handwritten in words:
-            if is_handwritten:
-                print(f"⚠️  WARNING: '{sensitive_word}' is handwritten")
-                padding = 25
-                x0 = y0 = padding
-                x1, y1 = (w - padding for w in pil_image.size)
-                draw.rectangle([x0, y0, x1, y1], fill="black") 
-                img_changed = True
-            else:
-                word_detected = False
-                _sword = sensitive_word.lower()
-                for (bbox, text, confidence) in ocr_results:
-                    _text = text.lower()
-                    if _sword in _text:
-                        x0 = min(p[0] for p in bbox)
-                        y0 = min(p[1] for p in bbox)
-                        x1 = max(p[0] for p in bbox)
-                        y1 = max(p[1] for p in bbox)
-                        
-                        line_width = x1 - x0
-                        char_width = line_width / len(_text)
-                        idx = _text.find(_sword)
+        raw_bytes = pil_image.tobytes()
+        doc.update_stream(xref, raw_bytes, new=0)
 
-                        word_x0 = x0 + idx * char_width 
-                        word_x1 = word_x0 + len(_sword) * char_width
-
-                        compensation = 40
-                        
-                        draw.rectangle([word_x0 - compensation, y0, word_x1 + compensation, y1], fill="black")                  
-                        img_changed = True
-                        word_detected = True
-                        break
-                print(f"{"✅" if word_detected else "❌"} { sensitive_word}")
-
-        if img_changed:
-            raw_bytes = pil_image.tobytes()
-            doc.update_stream(img_xref, raw_bytes, new=0)  
-        
-    if img_changed:
-        doc.save(output_path)
-    doc.close()       
+    doc.save(output_path)
+    doc.close()            
 
 def redact_metadata(pdf_path, output_path):
     doc = fitz.open(pdf_path)
@@ -298,70 +411,43 @@ def main():
 
     # AI DETECTION 🔎
     if DEBUG:
-        pages_sensitive_expressions = _simulate_text_response() # Mock data for development
-        imgs_words = _simulate_images_response()
+        sensitive_text_data = _simulate_text_response() # Mock data for development
+        sensitive_image_data = _simulate_images_response()
     else:       
-        pages_sensitive_expressions = detect_sensitive_words_in_text(formatted_text) # Live API call
-        imgs_words = detect_sensitive_words_in_images(images)
+        sensitive_text_data = detect_sensitive_words_in_text(formatted_text) # Live API call
+        sensitive_image_data = detect_sensitive_words_in_images(images)
 
+    print("\n📍 Detected by AI sensitive expressions in text:")
+    for page_no, page in enumerate(sensitive_text_data, start=1):
+        print(f"Page {page_no}: {page}")
+
+    print("\n📍 Detected by AI sensitive expressions in images:")
+    for img_xref, words in sensitive_image_data.items():
+        print(f"Image xref {img_xref}: {words}")
+
+    print()
 
     # Build page boxes for redaction based on detected sensitive expressions
-    pages_boxes = []
+    redaction_bboxes_per_page = map_sensitive_text_data_to_bboxes(sensitive_text_data, pages_words, pages_words_indexes)
+    redaction_bboxes_per_image = map_sensitive_image_data_to_bboxes(sensitive_image_data, images)
     
-    for page_no, page_sensitive_expressions in enumerate(pages_sensitive_expressions): 
-        print(f"===========> page no {page_no + 1}")
-        pages_boxes.append([])
-
-        page_words = pages_words[page_no]
-        page_words_indexes = pages_words_indexes[page_no]
-
-        for page_sensitive_expression in page_sensitive_expressions:
-            page_sensitive_expression_split = page_sensitive_expression.split()
-            expression_words_count = len(page_sensitive_expression_split)
-
-            first_word = page_sensitive_expression_split[0]
-            all_indexes = _find_all_indexes(first_word, page_words_indexes)
-            if not all_indexes:
-                print(f"  ⚠️  '{page_sensitive_expression}' — first word '{first_word}' not found")
-                continue
-
-            for page_word_index in all_indexes:                    
-                candidate = page_words[page_word_index: page_word_index + expression_words_count]
-                candidate_words = [w[4] for w in candidate]
-
-                if all(_words_match(c, s) for c, s in zip(candidate_words, page_sensitive_expression_split)):
-                    lines = defaultdict(list)
-                    for word in candidate:
-                        line_key = (word[5], word[6])  # block_no, line_no
-                        lines[line_key].append(word)
-
-                    for line_words in lines.values():
-                        box = (line_words[0][0], line_words[0][1], line_words[-1][2], line_words[-1][3])
-                        pages_boxes[-1].append(box)
-
-                    print(f"✅ '{page_sensitive_expression}'")
-                    # break
-            else:
-                print(f"❌ '{page_sensitive_expression}' não encontrado")            
-
 
     # REDACTION 📝
     # ── Step 1: False redact (visual only — text still extractable)
     _source_file = filePath
     _result_file = OUTPUT_DIR / "1_false_redact.pdf"    
-    draw_boxes(_source_file, _result_file, pages_boxes, color= (0,0,0), fill= (0,0,0))
+    draw_boxes(_source_file, _result_file, redaction_bboxes_per_page, color= (0,0,0), fill= (0,0,0))
 
 
     # ── Step 2: True text redact
     _source_file = filePath
     _result_file = OUTPUT_DIR / "2_redacted_text.pdf"
-    redact_text(_source_file, _result_file, pages_boxes)
-
+    redact_text(_source_file, _result_file, redaction_bboxes_per_page)
 
     # ── Step 3: Image redact
     _source_file = _result_file
     _result_file = OUTPUT_DIR / "3_redacted_images.pdf"   
-    redact_images(_source_file, _result_file, images, imgs_words)
+    redact_images(_source_file, _result_file, images, redaction_bboxes_per_image)
     
     # ── Step 4: Metadata redact
     _source_file = _result_file
