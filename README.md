@@ -2,6 +2,8 @@
 
 Automatically detect and permanently redact sensitive personal information from PDF files — text, embedded images, and metadata — using Python and AI.
 
+*Status: March 2026*
+
 This project is a **production-style case study** of a problem that sounds simple but isn't:
 
 > *"Can't I just ask ChatGPT to redact my PDF?"*
