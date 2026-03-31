@@ -34,7 +34,7 @@ BASE_DIR = Path(__file__).parent
 INPUT_DIR = BASE_DIR / "input"
 OUTPUT_DIR = BASE_DIR / "output"
 
-DEBUG = True  # Set to False to run the full pipeline with a real image and API call
+DEBUG = False  # Set to False to run the full pipeline with a real image and API call
 
 
 # ♦───────────────────────────────────────────────────────────────
@@ -54,8 +54,7 @@ def _simulate_images_response():
 # ♦───────────────────────────────────────────────────────────────
 #       DATA EXTRACTION 📄
 # ♦───────────────────────────────────────────────────────────────
-def extract_text(pdf_path):
-    
+def extract_text(pdf_path):  
     pages_words = []  # [[(x0, y0, x1, y1, word1, pno, lno, bno)], ...]
     pages_words_indexes = [] 
     
@@ -164,7 +163,6 @@ def detect_sensitive_words_in_images(images):
         except Exception as e:
             print(f"WARNING: erro ao processar imagem: {e}")
     
-    _json = json.dumps(images_boxes)
     return images_boxes
 
 
@@ -296,7 +294,11 @@ def map_sensitive_image_data_to_bboxes(sensitive_image_data, images):
                 x1, y1 = (w - padding for w in pil_image.size)
 
                 boxes.append((x0, y0, x1, y1))
-                break # since the whole image will be redacted, we can skip to the next one
+
+                # - Since the whole image will be redacted, we can skip to the next one!
+                # NOTE: The previous point is true because easyOCR models used in this example are not good at detecting handwritten text, 
+                # so we won't be able to reliably find the position of the handwritten word. 
+                break 
 
             word_detected = False
             _sword = sensitive_word.lower()
@@ -427,7 +429,7 @@ def main():
 
     print()
 
-    # Build page boxes for redaction based on detected sensitive expressions
+    # Bounding Boxes (BBOXES) FOR REDACTION 📦
     redaction_bboxes_per_page = map_sensitive_text_data_to_bboxes(sensitive_text_data, pages_words, pages_words_indexes)
     redaction_bboxes_per_image = map_sensitive_image_data_to_bboxes(sensitive_image_data, images)
     

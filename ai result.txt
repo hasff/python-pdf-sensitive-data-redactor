@@ -1,0 +1,46 @@
+📍 Detected by AI sensitive expressions in text:
+Page 1: ['FEDERAL BUREAU OF INTELLIGENCE & ART RECLAMATION OFFICIAL CASE DOSSIER: #DV-992-Gourd', 'March 21, 2026', 'TOP SECRET // ORCON', 'Rome, Italy', 'Alexandria, VA', 'Elias Thorne', '7742-ET', 'Sarah Vance', '+1-202-555-0198', 'Marcus "The Ghost" Reed', 'm.reed.secure@protonmail.ch', 'Count Alessandro Valerius', '142 Via della Lungaretta, Rome, IT', '+39-06-555-4321', 'MARCH 18-19, 2026', 'BARNABY']
+Page 2: ['BARNABY', '88 Piazza Santa Maria', 'Alexandria Preservation Facility', '7210 Oakhaven Lane, VA', '1502', 'BARNABY', '+39-06-555-4321', 'BARNABY', 'Sarah Vance']
+
+📍 Detected by AI sensitive expressions in images:
+Image xref 113: [['Sarah Vance', True]]
+Image xref 115: [['Phase IV', False], ['Exfiltration', False], ['03:05 AM', False], ['Agent Thorne', False], ['BARNABY', False], ['Marcus Reed', False]]
+
+
+📍 Mapping sensitive expressions to bounding boxes (text):
+──────────── Page 1 ────────────
+✅ 'FEDERAL BUREAU OF INTELLIGENCE & ART RECLAMATION OFFICIAL CASE DOSSIER: #DV-992-Gourd' found
+✅ 'March 21, 2026' found
+✅ 'TOP SECRET // ORCON' found
+✅ 'Rome, Italy' found
+✅ 'Alexandria, VA' found
+✅ 'Elias Thorne' found
+✅ '7742-ET' found
+✅ 'Sarah Vance' found
+✅ '+1-202-555-0198' found
+✅ 'Marcus "The Ghost" Reed' found
+✅ 'm.reed.secure@protonmail.ch' found
+✅ 'Count Alessandro Valerius' found
+✅ '142 Via della Lungaretta, Rome, IT' found
+✅ '+39-06-555-4321' found
+✅ 'MARCH 18-19, 2026' found
+✅ 'BARNABY' found
+──────────── Page 2 ────────────
+✅ 'BARNABY' found
+✅ '88 Piazza Santa Maria' found
+✅ 'Alexandria Preservation Facility' found
+✅ '7210 Oakhaven Lane, VA' found
+✅ '1502' found
+✅ 'BARNABY' found
+✅ '+39-06-555-4321' found
+✅ 'BARNABY' found
+✅ 'Sarah Vance' found
+
+📍 Mapping sensitive expressions to bounding boxes (images):
+⚠️  WARNING: 'Sarah Vance' is handwritten
+✅ Phase IV
+✅ Exfiltration
+✅ 03:05 AM
+✅ Agent Thorne
+✅ BARNABY
+✅ Marcus Reed
