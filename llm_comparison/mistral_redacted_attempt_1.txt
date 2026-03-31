@@ -1,13 +1,16 @@
-Query:
+─────────
+❓ Query:
+─────────
 I have a PDF document with sensitive personal information that needs to be redacted. 
 Please redact all sensitive information (names, addresses, phone numbers, emails, dates, locations) 
 and provide me the redacted PDF file as output.
 Keep the entire original document formatting.
 Images in the document also have sensitive words, redact them too.
 
-NOTE: original file was in attachment!
 
-Response:
+────────────────────────
+➡️ Response - just text:
+────────────────────────
 I appreciate you sharing the text content of the document. However, to redact the PDF file itself—including any images and maintaining the original formatting—I need the actual PDF file to be uploaded here.
 Since you've shared the text, I can provide you with a redacted text version. Here's how the redacted text would look:
 
@@ -95,3 +98,9 @@ Approved by: [REDACTED]
 (sign here)
 
 If you want the actual PDF file redacted, please upload the PDF file here. This will allow me to maintain the original formatting and redact any sensitive information in images as well.
+
+
+────────
+📍 NOTE: 
+────────
+original.pdf file was in attachment! It had this strange response "I appreciate you sharing the text content of the document.", suggesting that the file probably is pre processed before it gets into the true AI Model. No pdf was returned, just text.

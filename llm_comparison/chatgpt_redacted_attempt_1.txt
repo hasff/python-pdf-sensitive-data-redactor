@@ -1,0 +1,16 @@
+─────────
+❓ Query:
+─────────
+I have a PDF document with sensitive personal information that needs to be redacted. Please redact all sensitive information (names, addresses, phone numbers, emails, dates, locations) and provide me the redacted PDF file as output.
+
+
+────────────
+➡️ Response:
+────────────
+chatgpt_redacted_attempt_1.pdf
+
+
+────────
+📍 NOTE: 
+────────
+original.pdf file was in attachment! Produced a PDF but rewrote the document from scratch. No original formatting, no images, simplified text.

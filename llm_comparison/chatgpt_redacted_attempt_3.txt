@@ -1,5 +1,17 @@
-Query:
+─────────
+❓ Query:
+─────────
 This is my last attempt, if you fail I will consider in my case study that chatGPT cannot redact a pdf file correctly.
 Redact sensitive data, like name, people names, address, phone numbers, everything that is sensitive. The pdf file has text and images, those images also have text, so you should also redact sensitive text on those images, keeping the images as images of course. Redact metadata too.
 
-The result was a file with 48.1MB, not properly redacted, translated the images into text.
+
+────────────
+➡️ Response:
+────────────
+chatgpt_redacted_attempt_3.pdf, was worse then chatgpt_redacted_attempt_2.pdf
+
+
+────────
+📍 NOTE: 
+────────
+original.pdf file was in attachment! Regressed. Produced a 48 MB file with images converted to raw text and redaction incomplete.
