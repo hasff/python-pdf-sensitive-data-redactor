@@ -136,16 +136,15 @@ def detect_sensitive_words_in_images(images):
     
     images_boxes = {}
     
+    query = """    
+    Analyse the image and detect sensitive information: names, addresses, phone numbers, emails, dates, locations.
+    Return ONLY a raw JSON array. No markdown, no code fences, no backticks, no extra text whatsoever.
+    Start your response with [ and end with ].
+    Each element is: ["word", is_handwritten] where is_handwritten is true if the text is handwritten, false otherwise.
+    Example: [["John Smith", false], ["42 North Street", false], ["Mary", true]]     
+    """
+
     for image in images:
-
-        query = """    
-        Analyse the image and detect sensitive information: names, addresses, phone numbers, emails, dates, locations.
-        Return ONLY a raw JSON array. No markdown, no code fences, no backticks, no extra text whatsoever.
-        Start your response with [ and end with ].
-        Each element is: ["word", is_handwritten] where is_handwritten is true if the text is handwritten, false otherwise.
-        Example: [["John Smith", false], ["42 North Street", false], ["Mary", true]]     
-        """
-
         image_part = types.Part.from_bytes(
             data=image["bytes"],
             mime_type=f"image/{image['ext']}"
