@@ -8,6 +8,16 @@ This project is a **production-style case study** of a problem that sounds simpl
 
 > *"Can't I just ask ChatGPT to redact my PDF?"*
 
+## What actually happens
+
+> ⚠️ All documents and content shown below are fictional and created for demonstration purposes only. No real personal data is used.
+
+### Input - Original Document
+![Input](docs/intro/input.jpg)
+
+### Output - Redacted Document by ChatGPT
+![Output](docs/intro/output.jpg)
+
 The short answer is no. This repository shows why — and builds the pipeline that actually works.
 
 ---
