@@ -9,7 +9,7 @@ Automatically detect and permanently redact sensitive personal information from 
 > *"Can't I just ask ChatGPT to redact my PDF?"*
 
 ---
-#### ⚡ Quick Navigation: [How it Works](#how-this-pipeline-works) | [Redaction Results](#output-files) | [Installation & Setup](#quick-start)
+#### ⚡ Quick Navigation: [How it Works](#how-this-pipeline-works) | [Redaction Results](#output-files) | [Installation & Setup](#quick-start) | [📩 Get in Touch](#need-pdf-redaction-for-your-documents)
 ---
 
 
