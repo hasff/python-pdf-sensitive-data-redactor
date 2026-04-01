@@ -4,13 +4,18 @@ Automatically detect and permanently redact sensitive personal information from 
 
 *Status: March 2026*
 
+---
+### ⚡ Quick Navigation
+[How it Works](#how-this-pipeline-works) | [Redaction Results](#output-files) | [Installation & Setup](#quick-start)
+---
+
 This project is a **production-style case study** of a problem that sounds simple but isn't:
 
 > *"Can't I just ask ChatGPT to redact my PDF?"*
 
 ## What actually happens
 
-> ⚠️ All documents and content shown below are fictional and created for demonstration purposes only. No real personal data is used.
+> ⚠️ The sample documents and personal data shown in this demonstration are entirely fictional. No real PII (Personally Identifiable Information) was used.
 
 ### Input - Original Document
 ![Input](docs/intro/input.jpg)
