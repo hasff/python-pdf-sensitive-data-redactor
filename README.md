@@ -127,9 +127,13 @@ All expressions: detected ✅. All expressions: redacted ✅.
 
 ## The false redact demonstration
 
-One of the outputs (`1_false_redact.pdf`) deliberately shows the failure mode: black boxes drawn over the text, but the underlying data intact. Running a text extractor on that file returns all the sensitive information in full.
+![false redact](docs/false_redact.jpg)
 
-The next output (`2_redacted_text.pdf`) uses PyMuPDF's redaction API, which physically removes the text from the file structure before drawing the box. The same extractor returns nothing.
+*Despite the black overlay, the PDF text layer is intact — selection and copy/paste still work.*
+
+One of the outputs ([`1_false_redact.pdf/`](output/1_false_redact.pdf)) deliberately shows the failure mode: black boxes drawn over the text, but the underlying data intact. Running a text extractor on that file returns all the sensitive information in full.
+
+The next output ([`2_redacted_text.pdf/`](output/2_redacted_text.pdf)) uses PyMuPDF's redaction API, which physically removes the text from the file structure before drawing the box. The same extractor returns nothing.
 
 This is the difference between hiding data and removing it.
 
@@ -137,12 +141,12 @@ This is the difference between hiding data and removing it.
 
 ## Output files
 
-| File | What it shows |
-|---|---|
-| `1_false_redact.pdf` | Black boxes drawn over text — data still extractable |
-| `2_redacted_text.pdf` | True text redaction — underlying data permanently removed |
-| `3_redacted_images.pdf` | Images also redacted using OCR-based localisation |
-| `4_redacted_final.pdf` | Final output with metadata wiped |
+| File | What it shows | Preview |
+|---|---|---|
+| [`1_false_redact.pdf/`](output/1_false_redact.pdf) | Black boxes drawn over text — data still extractable | ![false redact](docs/false_redact_table.jpg) |
+| [`2_redacted_text.pdf/`](output/2_redacted_text.pdf) | True text redaction — underlying data permanently removed | ![true redact](docs/true_redact.jpg) |
+| [`3_redacted_images.pdf/`](output/3_redacted_images.pdf) | Images also redacted using OCR-based localisation | ![redact images](docs/redact_images.jpg) |
+| [`4_redacted_final.pdf/`](output/4_redacted_final.pdf) | Final output with metadata wiped | ![metadata wiped](docs/metadata_wiped.jpg) |
 
 ---
 
