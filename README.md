@@ -1,5 +1,8 @@
 # Python PDF Sensitive Data Redactor
 
+[![Sponsor hasff](https://img.shields.io/badge/Sponsor-hasff-brightgreen?logo=github-sponsors)](https://github.com/sponsors/hasff)
+[![Portfolio](https://img.shields.io/badge/Portfolio-AI%2FML%20Projects-blue?logo=github)](https://hasff.github.io/my-ai-portfolio/)
+
 Automatically detect and permanently redact sensitive personal information from PDF files — text, embedded images, and metadata — using Python and AI.
 
 *Status: March 2026*
@@ -225,6 +228,8 @@ I build automated document processing pipelines for:
 🌐 Courses and professional tools: https://hasff.github.io/site/
 
 🔗 LinkedIn: https://www.linkedin.com/in/hugo-ferro-1434b414/
+
+🗂️ **Portfolio:** [more AI/ML projects like this one](https://hasff.github.io/my-ai-portfolio/)
 
 ---
 
